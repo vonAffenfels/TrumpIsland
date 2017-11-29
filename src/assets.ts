@@ -10,7 +10,6 @@ export namespace Images {
             return require('assets/images/background_template.png');
         }
     }
-
     export class ImagesButtonNeustart {
         static getName(): string {
             return 'button_neustart';
@@ -20,7 +19,6 @@ export namespace Images {
             return require('assets/images/button_neustart.png');
         }
     }
-
     export class ImagesButtonStart {
         static getName(): string {
             return 'button_start';
@@ -30,7 +28,6 @@ export namespace Images {
             return require('assets/images/button_start.png');
         }
     }
-
     export class ImagesInsel {
         static getName(): string {
             return 'insel';
@@ -40,7 +37,6 @@ export namespace Images {
             return require('assets/images/insel.png');
         }
     }
-
     export class ImagesLoading {
         static getName(): string {
             return 'loading';
@@ -82,7 +78,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsFishMiddle230841 {
         static getName(): string {
             return 'fish_middle.[230,84,-1,0,0]';
@@ -112,7 +107,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsFishSmall230841 {
         static getName(): string {
             return 'fish_small.[230,84,-1,0,0]';
@@ -142,7 +136,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsOil1501611 {
         static getName(): string {
             return 'oil.[150,161,-1,0,0]';
@@ -172,7 +165,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsPruegelTrump3805091 {
         static getName(): string {
             return 'pruegel_trump.[380,509,-1,0,0]';
@@ -202,7 +194,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsUboot1501641 {
         static getName(): string {
             return 'uboot.[150,164,-1,0,0]';
@@ -232,7 +223,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsWasserNogap75010351 {
         static getName(): string {
             return 'wasser_nogap.[750,1035,-1,0,0]';
@@ -262,7 +252,6 @@ export namespace Spritesheets {
             return 0;
         }
     }
-
     export class SpritesheetsWasserTransparentNogap75010351 {
         static getName(): string {
             return 'wasser_transparent_nogap.[750,1035,-1,0,0]';
@@ -309,7 +298,6 @@ export namespace Audio {
             return require('assets/audio/paddel.mp3');
         }
     }
-
     export class AudioSoundtrack {
         static getName(): string {
             return 'soundtrack';
@@ -353,7 +341,6 @@ export namespace BitmapFonts {
             return require('assets/fonts/fnt_va_white.png');
         }
     }
-
     export class FontsFntVa {
         static getName(): string {
             return 'fnt_va';
@@ -398,7 +385,6 @@ export namespace Scripts {
             return require('assets/scripts/BlurX.js');
         }
     }
-
     export class ScriptsBlurY {
         static getName(): string {
             return 'BlurY';

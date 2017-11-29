@@ -27,7 +27,7 @@ export default class Oceanlife extends Phaser.Group {
     }
 
     private createBigFish() {
-        this.fishBig = this.game.add.sprite(this.game.world.width, this.game.world.centerY + 160, Assets.Spritesheets.SpritesheetsFishBig230841.getName(), null, this);
+        this.fishBig = this.game.add.sprite(this.game.world.width, this.game.world.centerY + 160, Assets.Spritesheets.SpritesheetsFishMiddle230841.getName(), null, this);
         this.fishBig.animations.add('swim');
         this.fishBig.animations.play('swim', 5, true);
 

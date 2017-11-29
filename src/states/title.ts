@@ -3,7 +3,7 @@ import App from "../app";
 import CountdownObject from "../objects/countdown";
 import Oceanlife from "../objects/oceanlife";
 import { Config } from "../config";
-import { Gamestage, StagePosition } from "../objects/gamestage";
+import { GameSpeed, Gamestage, StagePosition } from "../objects/gamestage";
 
 export default class Title extends Phaser.State {
 
@@ -15,6 +15,7 @@ export default class Title extends Phaser.State {
     private currentSpeed: number = 0;
     private gameStarted: boolean = false;
     private timer: Phaser.Timer;
+    private speedToPoints: Map<GameSpeed, number>;
 
     // ----------------
     // Sprites
@@ -33,6 +34,7 @@ export default class Title extends Phaser.State {
     private waterFrontGroup: Phaser.Group;
     private oceanGroup: Oceanlife;
     private gamestage: Gamestage;
+    private uiElements: Phaser.Group;
 
     // ----------------
     // Text
@@ -56,6 +58,11 @@ export default class Title extends Phaser.State {
     // ----------------
 
     public create(): void {
+        this.speedToPoints = new Map<GameSpeed, number>();
+        this.speedToPoints.set(GameSpeed.SLOW, Config.slowPoint);
+        this.speedToPoints.set(GameSpeed.MEDIUM, Config.mediumPoint);
+        this.speedToPoints.set(GameSpeed.HIGH, Config.fastPoint);
+
         // this.backgroundTemplateSprite = this.game.add.sprite(this.game.world.centerX, this.game.world.centerY, Assets.Images.ImagesBackgroundTemplate.getName());
         // this.backgroundTemplateSprite.anchor.setTo(0.5);
 
@@ -71,11 +78,11 @@ export default class Title extends Phaser.State {
         this.createWaterFrontGroup();
         this.createGamestage();
 
-
+        this.createUiGroup();
         this.createStartButton();
         this.createRestartButton();
 
-        this.game.sound.play(Assets.Audio.AudioSoundtrack.getName(), 0.2, true);
+        // this.game.sound.play(Assets.Audio.AudioSoundtrack.getName(), 0.2, true);
 
         // this.backgroundTemplateSprite.inputEnabled = true;
         // this.backgroundTemplateSprite.events.onInputDown.add(() => {
@@ -88,9 +95,7 @@ export default class Title extends Phaser.State {
     public update() {
         this.showTimeLeft();
 
-        if (this.gameStarted) {
-            this.highscoreText.text = "SCORE: " + this.score;
-        }
+        this.updateScore();
     }
 
     // ----------------
@@ -101,6 +106,9 @@ export default class Title extends Phaser.State {
         this.gamestage = new Gamestage(this.game);
         this.gamestage.hitSignal.add((position: StagePosition) => {
             this.doTrumpHit(position);
+        });
+        this.gamestage.scoreHitSignal.add((speed: GameSpeed) => {
+            this.scoreHit(speed);
         });
         this.gamestage.visible = false;
     }
@@ -119,7 +127,7 @@ export default class Title extends Phaser.State {
 
     private createRestartButton() {
         let yPos: number = this.game.world.height - this.game.world.height / 4;
-        this.buttonRestart = this.game.add.sprite(this.game.world.centerX, yPos, Assets.Images.ImagesButtonNeustart.getName());
+        this.buttonRestart = this.game.add.sprite(this.game.world.centerX, yPos, Assets.Images.ImagesButtonNeustart.getName(), null, this.uiElements);
         this.buttonRestart.anchor.setTo(0.5);
         this.buttonRestart.scale.setTo(2);
         this.buttonRestart.visible = false;
@@ -131,7 +139,7 @@ export default class Title extends Phaser.State {
     private createStartButton() {
         let yPos: number = this.game.world.height - this.game.world.height / 4;
 
-        this.buttonStart = this.game.add.sprite(this.game.world.centerX, yPos, Assets.Images.ImagesButtonStart.getName());
+        this.buttonStart = this.game.add.sprite(this.game.world.centerX, yPos, Assets.Images.ImagesButtonStart.getName(), null, this.uiElements);
         this.buttonStart.anchor.setTo(0.5);
         this.buttonStart.scale.setTo(2);
         this.buttonStart.inputEnabled = true;
@@ -237,6 +245,7 @@ export default class Title extends Phaser.State {
 
         this.score = 0;
         this.gameStarted = true;
+        this.gamestage.start(Config.gameTime);
 
         this.timer = this.game.time.create(false);
         this.timer.loop(Phaser.Timer.SECOND, () => {
@@ -248,15 +257,7 @@ export default class Title extends Phaser.State {
     }
 
     private handleTime(): void {
-        if (this.timeLeft > 0) {
-            // if (this.timeLeft % this.changeSpeedInterval == 0) {
-            //     this.currentSpeed++;
-            //     if (this.currentSpeed >= this.speeds.length) {
-            //         this.currentSpeed = this.speeds.length - 1;
-            //     }
-            //     this._updateHeadTimer();
-            // }
-        } else {
+        if (this.timeLeft <= 0) {
             this.stopGame();
         }
     }
@@ -274,6 +275,7 @@ export default class Title extends Phaser.State {
         }
 
         this.cleanUp();
+        this.gamestage.stop();
 
         this.buttonRestart.visible = true;
 
@@ -367,6 +369,20 @@ export default class Title extends Phaser.State {
 
             this.trump.animations.play(hitAni);
             this.sfxAudiosprite.play();
+        }
+    }
+
+    private createUiGroup(): void {
+        this.uiElements = this.game.add.group();
+    }
+
+    private scoreHit(speed: GameSpeed): void {
+        this.score += this.speedToPoints.get(speed);
+    }
+
+    private updateScore() {
+        if (this.gameStarted) {
+            this.scoreText.text = "SCORE: " + this.score;
         }
     }
 }
