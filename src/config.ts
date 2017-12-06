@@ -1,5 +1,10 @@
 export class Config {
     static gameName: String = "TrumbIsland";
+
+    static baseWidth: number = 750;
+    static baseHeight: number = 1334;
+    static maxWidth: number = 768;
+
     /**
      * The final score is multiplied by this number.
      *

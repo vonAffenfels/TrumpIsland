@@ -337,7 +337,8 @@ export namespace Audiosprites {
 }
 
 export namespace GoogleWebFonts {
-    export const Barrio: string = 'Barrio';
+    class IExistSoTypeScriptWillNotComplainAboutAnEmptyNamespace {
+    }
 }
 
 export namespace CustomWebFonts {

@@ -63,8 +63,10 @@ export default class Title extends Phaser.State {
     public create(): void {
         this.speedToPoints = new Map<GameSpeed, number>();
         this.speedToPoints.set(GameSpeed.SLOW, Config.slowPoint);
-        this.speedToPoints.set(GameSpeed.MEDIUM, Config.mediumPoint);
-        this.speedToPoints.set(GameSpeed.HIGH, Config.fastPoint);
+        this.speedToPoints.set(GameSpeed.MEDIUM, Config.slowPoint);
+        this.speedToPoints.set(GameSpeed.FAST, Config.mediumPoint);
+        this.speedToPoints.set(GameSpeed.VERYFAST, Config.mediumPoint);
+        this.speedToPoints.set(GameSpeed.LIGHTSPEED, Config.fastPoint);
 
         // this.backgroundTemplateSprite = this.game.add.sprite(this.game.world.centerX, this.game.world.centerY, Assets.Images.ImagesBackgroundTemplate.getName());
         // this.backgroundTemplateSprite.anchor.setTo(0.5);
@@ -115,7 +117,7 @@ export default class Title extends Phaser.State {
     // ----------------
 
     private createGamestage(): void {
-        this.gamestage = new Gamestage(this.game);
+        this.gamestage = new Gamestage(this.game, this.speedToPoints);
         this.gamestage.hitSignal.add((position: StagePosition) => {
             this.doTrumpHit(position);
         });

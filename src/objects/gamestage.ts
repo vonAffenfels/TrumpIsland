@@ -8,15 +8,17 @@ export enum StagePosition {
 }
 
 export enum GameSpeed {
-    SLOW = 1500,
-    MEDIUM = 1200,
-    HIGH = 1000
+    SLOW = 1100,
+    MEDIUM = 1000,
+    FAST = 800,
+    VERYFAST = 600,
+    LIGHTSPEED = 400
 }
 
 export enum FishSpeed {
-    SLOW = 400,
-    MEDIUM = 400,
-    HIGH = 600
+    SLOW = 700,
+    MEDIUM = 900,
+    HIGH = 1000
 }
 
 export class Gamestage extends Phaser.Group {
@@ -58,7 +60,7 @@ export class Gamestage extends Phaser.Group {
         StagePosition.LEFT, StagePosition.CENTER, StagePosition.RIGHT
     ];
 
-    constructor(game: Phaser.Game, private hitBoxHeight: number = 100) {
+    constructor(game: Phaser.Game, private speedToPoints: Map<GameSpeed, number>, private hitBoxHeight: number = 100) {
         super(game);
 
         this.clickAreas = new Map<StagePosition, Phaser.Sprite>();
@@ -109,12 +111,16 @@ export class Gamestage extends Phaser.Group {
         this.speeds = [
             GameSpeed.SLOW,
             GameSpeed.MEDIUM,
-            GameSpeed.HIGH
+            GameSpeed.FAST,
+            GameSpeed.VERYFAST,
+            GameSpeed.LIGHTSPEED
         ];
 
         this.fishSpeeds = [
             FishSpeed.SLOW,
             FishSpeed.MEDIUM,
+            FishSpeed.MEDIUM,
+            FishSpeed.HIGH,
             FishSpeed.HIGH
         ];
 
@@ -161,6 +167,23 @@ export class Gamestage extends Phaser.Group {
         this.createClickAreas();
     }
 
+
+    private showScoreText(fish: Phaser.Sprite, text: string) {
+
+        // change w and h
+        let textPosX = fish.x - (fish.height / 2);
+        let textPosY = fish.y + (fish.width / 2);
+
+        let txt = this.game.add.bitmapText(textPosX, textPosY, Assets.BitmapFonts.FontsFntVa.getName(), text, 40);
+        txt.anchor.setTo(0.5, 1);
+        let fallTween = this.game.add.tween(txt);
+        fallTween.to({alpha: 0, y: textPosY - 100});
+        fallTween.onComplete.add(() => {
+            txt.destroy();
+        });
+
+        fallTween.start();
+    }
 
     private createFishLayer(): void {
         this.fishGroup = this.game.add.group(this);
@@ -260,8 +283,9 @@ export class Gamestage extends Phaser.Group {
 
         fishes.forEach((fish: Phaser.Sprite) => {
             this.game.physics.arcade.overlap(hitBox, fish, () => {
+                this.showScoreText(fish, "+" + this.getScore(this.currentSpeed));
                 this.clearFish(fishes, position);
-                this.scoreHitSignal.dispatch(this.currentSpeed);
+                this.scoreHitSignal.dispatch(this.currentSpeed, this.currentFishSpeed);
             });
         });
     }
@@ -339,5 +363,9 @@ export class Gamestage extends Phaser.Group {
     private missedFish(fish: Phaser.Sprite, position: StagePosition): void {
         this.clearFish([fish], position);
         this.fishMissedSignal.dispatch();
+    }
+
+    private getScore(currentSpeed: GameSpeed) {
+        return this.speedToPoints.get(currentSpeed);
     }
 }

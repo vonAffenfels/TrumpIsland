@@ -18,8 +18,8 @@ export default class Oceanlife extends Phaser.Group {
 
         let third = this.game.world.height / 3;
         let lower = this.game.world.height - third;
-        this.createSmallFish(10, lower, third - 50);
-        this.createMediumFish(8, lower, third - 100, 4500);
+        // this.createSmallFish(10, lower, third - 50);
+        // this.createMediumFish(8, lower, third - 100, 4500);
         this.createSubmarine();
     }
 

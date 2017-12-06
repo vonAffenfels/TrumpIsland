@@ -1,6 +1,7 @@
 import * as Utils from '../utils/utils';
 import * as Assets from '../assets';
 import App from '../app';
+import { Config } from "../config";
 
 export default class Boot extends Phaser.State {
 
@@ -27,15 +28,22 @@ export default class Boot extends Phaser.State {
             this.game.scale.setUserScale(screenMetrics.scaleX, screenMetrics.scaleY);
         }
 
-        this.game.scale.pageAlignHorizontally = true;
-        this.game.scale.pageAlignVertically = true;
+        this.scale.pageAlignHorizontally = true;
+        this.scale.pageAlignVertically = true;
 
+        // Scale the game
         let curHeight = this.game.height;
         let curWidth = this.game.width;
-        let baseHeight = DEFAULT_GAME_HEIGHT;
-        let baseWidth = DEFAULT_GAME_WIDTH;
+        let baseHeight = Config.baseHeight;
+        let baseWidth = Config.baseWidth;
         let vScale = curHeight / baseHeight;
         let widthDiff = Math.ceil((curWidth - baseWidth * vScale) / vScale);
+
+        this.scale.setGameSize(Math.min(baseWidth + widthDiff, Config.maxWidth), baseHeight);
+        this.scale.setUserScale(vScale, vScale, 0, 0, false, false);
+
+        // Keep game running if it loses the focus
+        this.game.stage.disableVisibilityChange = true;
 
         if (this.game.device.desktop) {
             // Any desktop specific stuff here
