@@ -8,9 +8,15 @@ export enum StagePosition {
 }
 
 export enum GameSpeed {
-    SLOW = 200,
-    MEDIUM = 300,
-    HIGH = 500
+    SLOW = 1500,
+    MEDIUM = 1200,
+    HIGH = 1000
+}
+
+export enum FishSpeed {
+    SLOW = 400,
+    MEDIUM = 400,
+    HIGH = 600
 }
 
 export class Gamestage extends Phaser.Group {
@@ -21,6 +27,7 @@ export class Gamestage extends Phaser.Group {
 
     public hitSignal: Phaser.Signal = new Phaser.Signal();
     public scoreHitSignal: Phaser.Signal = new Phaser.Signal();
+    public fishMissedSignal: Phaser.Signal = new Phaser.Signal();
 
     // ---------------------
     // Gui
@@ -29,6 +36,7 @@ export class Gamestage extends Phaser.Group {
     private fishGroup: Phaser.Group;
     private hitboxGroup: Phaser.Group;
     private clickAreaGroup: Phaser.Group;
+    private missedHitBox: Phaser.Sprite;
 
     private clickAreas: Map<StagePosition, Phaser.Sprite>;
     private hitboxMap: Map<StagePosition, Phaser.Sprite>;
@@ -39,15 +47,18 @@ export class Gamestage extends Phaser.Group {
     // ---------------------
 
     private currentSpeed: GameSpeed = GameSpeed.SLOW;
+    private currentFishSpeed: FishSpeed = FishSpeed.SLOW;
     private speeds: Array<GameSpeed>;
+    private fishSpeeds: Array<FishSpeed>;
     private timer: Phaser.Timer;
+    private spawnTimer: Phaser.Timer;
     private timeLeft: number;
     private changeSpeedInterval: number;
     private positions: Array<StagePosition> = [
         StagePosition.LEFT, StagePosition.CENTER, StagePosition.RIGHT
     ];
 
-    constructor(game: Phaser.Game) {
+    constructor(game: Phaser.Game, private hitBoxHeight: number = 100) {
         super(game);
 
         this.clickAreas = new Map<StagePosition, Phaser.Sprite>();
@@ -56,7 +67,41 @@ export class Gamestage extends Phaser.Group {
         this.initStage();
     }
 
+    public render() {
+        if (this.hitboxMap) {
+            for (let sprite of this.hitboxMap.values()) {
+                this.game.debug.body(sprite);
+            }
+        }
+        if (this.missedHitBox) {
+            this.game.debug.body(this.missedHitBox);
+        }
+        if (this.fishMap) {
+            for (let fishList of this.fishMap.values()) {
+                fishList.forEach((fish) => {
+                    this.game.debug.body(fish);
+                });
+            }
+        }
+    }
+
+    public update() {
+        if (this.fishMap && this.missedHitBox) {
+            for (let position of this.fishMap.keys()) {
+                let fishList: Array<Phaser.Sprite> = this.fishMap.get(position);
+
+                fishList.forEach((fish) => {
+                    this.game.physics.arcade.overlap(fish, this.missedHitBox, (fish, box) => {
+                        this.missedFish(fish, position);
+                    });
+                });
+            }
+
+        }
+    }
+
     public start(gameTime: number): void {
+        this.hitboxGroup.visible = true;
         this.timeLeft = gameTime;
 
         this.fishMap = new Map<StagePosition, Array<Phaser.Sprite>>();
@@ -65,6 +110,12 @@ export class Gamestage extends Phaser.Group {
             GameSpeed.SLOW,
             GameSpeed.MEDIUM,
             GameSpeed.HIGH
+        ];
+
+        this.fishSpeeds = [
+            FishSpeed.SLOW,
+            FishSpeed.MEDIUM,
+            FishSpeed.HIGH
         ];
 
         this.changeSpeedInterval = Math.floor(gameTime / this.speeds.length);
@@ -76,6 +127,7 @@ export class Gamestage extends Phaser.Group {
 
         this.currentSpeed = this.speeds.shift();
         this.timer.start();
+        this.updateSpawnTimer();
 
         this.fishGroup.visible = true;
     }
@@ -85,16 +137,21 @@ export class Gamestage extends Phaser.Group {
         this.timer.destroy();
         this.timer = null;
 
+        this.spawnTimer.stop(true);
+        this.spawnTimer.destroy();
+        this.spawnTimer = null;
+
         this.fishGroup.visible = false;
+        this.fishGroup.removeAll(true);
+        this.fishMap.clear();
     }
 
     private handleTime() {
         if (this.timeLeft % this.changeSpeedInterval === 0) {
             this.currentSpeed = this.speeds.shift();
-        }
+            this.currentFishSpeed = this.fishSpeeds.shift();
 
-        if (this.timeLeft > 0) {
-            this.spawnFish(this.currentSpeed);
+            this.updateSpawnTimer();
         }
     }
 
@@ -112,22 +169,21 @@ export class Gamestage extends Phaser.Group {
 
     private createHitBoxes(): void {
         this.hitboxGroup = this.game.add.group(this);
+        this.hitboxGroup.visible = false;
 
-        let yPos: number = (this.game.world.height / 3) + 50;
+        let yPos: number = (this.game.world.height / 3) + 150;
 
         let boxWidth: number = this.game.world.width / 3;
-        let boxHeight: number = 150;
+        let boxHeight: number = this.hitBoxHeight;
 
         let leftBox: Phaser.Sprite = this.game.add.sprite(0, yPos, null, "bla", this.hitboxGroup);
         leftBox.width = boxWidth;
         leftBox.height = boxHeight;
-
         this.game.physics.arcade.enable(leftBox);
-
         leftBox.body.enable = true;
         this.hitboxMap.set(StagePosition.LEFT, leftBox);
 
-        let centerBox: Phaser.Sprite = this.game.add.sprite(boxWidth, yPos, null, "bla", this.hitboxGroup);
+        let centerBox: Phaser.Sprite = this.game.add.sprite(boxWidth, yPos, null, null, this.hitboxGroup);
         centerBox.width = boxWidth;
         centerBox.height = boxHeight;
         this.game.physics.arcade.enable(centerBox);
@@ -135,11 +191,23 @@ export class Gamestage extends Phaser.Group {
         this.hitboxMap.set(StagePosition.CENTER, centerBox);
 
 
-        let rightBox: Phaser.Sprite = this.game.add.sprite(boxWidth * 2, yPos, null, "bla", this.hitboxGroup);
+        let rightBox: Phaser.Sprite = this.game.add.sprite(boxWidth * 2, yPos, null, null, this.hitboxGroup);
         rightBox.width = boxWidth;
+        rightBox.height = boxHeight;
         this.game.physics.arcade.enable(rightBox);
         rightBox.body.enable = true;
         this.hitboxMap.set(StagePosition.RIGHT, rightBox);
+
+        let missedBoxY = yPos - (Assets.Spritesheets.SpritesheetsFishBig230841.getFrameWidth());
+        let missedBox: Phaser.Sprite = this.game.add.sprite(0, missedBoxY, null, null, this.hitboxGroup);
+        missedBox.width = this.game.world.width;
+        missedBox.height = 30;
+
+        this.game.physics.arcade.enable(missedBox);
+
+        missedBox.body.enable = true;
+        this.missedHitBox = missedBox;
+
     }
 
     private createClickAreas(): void {
@@ -190,24 +258,12 @@ export class Gamestage extends Phaser.Group {
             return;
         }
 
-        for (let i = 0; i < fishes.length; i++) {
-            let fish = fishes[i];
-
-            let overlap: boolean = this.game.physics.arcade.overlap(hitBox, fish);
-            // DEBUG
-            console.log("overlap:", overlap);
-        }
-        //
-        fishes = fishes.filter((fish: Phaser.Sprite) => {
-            return this.game.physics.arcade.overlap(hitBox, fish);
+        fishes.forEach((fish: Phaser.Sprite) => {
+            this.game.physics.arcade.overlap(hitBox, fish, () => {
+                this.clearFish(fishes, position);
+                this.scoreHitSignal.dispatch(this.currentSpeed);
+            });
         });
-
-        if (fishes.length) {
-            // DEBUG
-            console.log("fish is hit", fishes.length, position);
-            this.scoreHitSignal.dispatch(this.currentSpeed);
-            this.clearFish(fishes, position);
-        }
     }
 
     private clearFish(fishes: Array<Phaser.Sprite>, position: StagePosition): void {
@@ -221,17 +277,12 @@ export class Gamestage extends Phaser.Group {
 
     }
 
-    // ---------------------
-    // Click Handler
-    // ---------------------
-
     private onStageClick(position: StagePosition): void {
-        this.hitSignal.dispatch(position);
-
         this.checkHit(position);
+        this.hitSignal.dispatch(position);
     }
 
-    private spawnFish(currentSpeed: GameSpeed): void {
+    private spawnFish(currentSpeed: FishSpeed): void {
         if (!currentSpeed) {
             return;
         }
@@ -243,17 +294,21 @@ export class Gamestage extends Phaser.Group {
 
         let startX: number = (colWidth * index) + colCenter;
 
-        let fish: Phaser.Sprite = this.game.add.sprite(startX, this.game.world.height + Assets.Spritesheets.SpritesheetsFishBig230841.getFrameWidth(),
+        let fishW = Assets.Spritesheets.SpritesheetsFishBig230841.getFrameWidth();
+        let fishH = Assets.Spritesheets.SpritesheetsFishBig230841.getFrameHeight();
+
+        let fish: Phaser.Sprite = this.game.add.sprite(startX + (fishH / 2), this.game.world.height + fishW,
             Assets.Spritesheets.SpritesheetsFishBig230841.getName(),
             null,
             this.fishGroup);
-        fish.anchor.set(0.5, 0.5);
+        // fish.anchor.set(0.5, 0);
         fish.angle = 90;
         fish.animations.add('swim');
         fish.animations.play('swim', 5, true);
 
         this.game.physics.arcade.enable(fish);
         fish.body.enable = true;
+        fish.body.setSize(fishH, fishW - 40, -fishH, 30);
 
         let target = this.hitboxMap.get(position);
         // this.game.physics.arcade.moveToObject(fish, target, currentSpeed.valueOf());
@@ -265,5 +320,24 @@ export class Gamestage extends Phaser.Group {
         this.fishMap.get(position).push(fish);
 
         fish.body.velocity.y = -(currentSpeed.valueOf());
+    }
+
+    private updateSpawnTimer() {
+        if (!this.spawnTimer) {
+            this.spawnTimer = this.game.time.create(false);
+        }
+
+        this.spawnTimer.stop(true);
+        this.spawnTimer.loop(this.currentSpeed, () => {
+            if (this.timeLeft > 0) {
+                this.spawnFish(this.currentFishSpeed);
+            }
+        });
+        this.spawnTimer.start();
+    }
+
+    private missedFish(fish: Phaser.Sprite, position: StagePosition): void {
+        this.clearFish([fish], position);
+        this.fishMissedSignal.dispatch();
     }
 }
