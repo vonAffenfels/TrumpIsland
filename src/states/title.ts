@@ -1,23 +1,29 @@
 import * as Assets from '../assets';
 import App from "../app";
 import CountdownObject from "../objects/countdown";
-import Oceanlife from "../objects/oceanlife";
 import { Config } from "../config";
-import { GameSpeed, Gamestage, StagePosition } from "../objects/gamestage";
+import { GameSpeed, Gamestage } from "../objects/gamestage";
+import PMath = Phaser.Math;
+
+const TRUMP_START_FRAME: number = 1;
+const TRUMP_HIT_FRAME: number = 0;
+const WATER_MISS_RAISE: number = 13;
 
 export default class Title extends Phaser.State {
 
 
-    private WATER_MISS_RAISE: number = 13;
     private countdown: CountdownObject;
     private trumpHitSound: Phaser.Sound = null;
     private fishMissSound: Phaser.Sound = null;
     private score: number = 0;
     private timeLeft: number = 0;
     private totalMisses: number = 0;
+    private shieldHitCount: number = 0;
     private gameStarted: boolean = false;
-    private timer: Phaser.Timer;
     private speedToPoints: Map<GameSpeed, number>;
+    private increaseScores: Array<number>;
+    private nextIncrease: number;
+    private shieldActive: boolean = false;
 
     // ----------------
     // Sprites
@@ -25,6 +31,8 @@ export default class Title extends Phaser.State {
 
     private island: Phaser.Sprite = null;
     private trump: Phaser.Sprite = null;
+    private trumpPaddel: Phaser.Sprite = null;
+    private trumpShield: Phaser.Sprite = null;
     private buttonStart: Phaser.Sprite = null;
     private buttonRestart: Phaser.Sprite = null;
 
@@ -34,7 +42,6 @@ export default class Title extends Phaser.State {
 
     private waterBackgroundGroup: Phaser.Group;
     private waterFrontGroup: Phaser.Group;
-    private oceanGroup: Oceanlife;
     private gamestage: Gamestage;
     private uiElements: Phaser.Group;
 
@@ -46,7 +53,6 @@ export default class Title extends Phaser.State {
     private scoreText: Phaser.BitmapText;
     private timerText: Phaser.BitmapText;
     private highscoreText: Phaser.BitmapText;
-    private finishText: Phaser.BitmapText;
     private newHighscoreText: Phaser.BitmapText;
     private title: Phaser.BitmapText = null;
 
@@ -62,14 +68,11 @@ export default class Title extends Phaser.State {
 
     public create(): void {
         this.speedToPoints = new Map<GameSpeed, number>();
-        this.speedToPoints.set(GameSpeed.SLOW, Config.slowPoint);
-        this.speedToPoints.set(GameSpeed.MEDIUM, Config.slowPoint);
-        this.speedToPoints.set(GameSpeed.FAST, Config.mediumPoint);
-        this.speedToPoints.set(GameSpeed.VERYFAST, Config.mediumPoint);
-        this.speedToPoints.set(GameSpeed.LIGHTSPEED, Config.fastPoint);
-
-        // this.backgroundTemplateSprite = this.game.add.sprite(this.game.world.centerX, this.game.world.centerY, Assets.Images.ImagesBackgroundTemplate.getName());
-        // this.backgroundTemplateSprite.anchor.setTo(0.5);
+        this.speedToPoints.set(GameSpeed.SLOW, Config.slowPoint * Config.scoreGain);
+        this.speedToPoints.set(GameSpeed.MEDIUM, Config.slowPoint * Config.scoreGain);
+        this.speedToPoints.set(GameSpeed.FAST, Config.mediumPoint * Config.scoreGain);
+        this.speedToPoints.set(GameSpeed.VERYFAST, Config.mediumPoint * Config.scoreGain);
+        this.speedToPoints.set(GameSpeed.LIGHTSPEED, Config.fastPoint * Config.scoreGain);
 
         this.game.physics.startSystem(Phaser.Physics.ARCADE);
 
@@ -79,7 +82,7 @@ export default class Title extends Phaser.State {
         this.createWaterBackgroundGroup();
         this.createTitle();
         this.createTrump();
-        this.createOceanGroup();
+        this.createTrumpShield();
         this.createWaterFrontGroup();
         this.createGamestage();
 
@@ -87,12 +90,9 @@ export default class Title extends Phaser.State {
         this.createStartButton();
         this.createRestartButton();
 
-        // this.game.sound.play(Assets.Audio.AudioSoundtrack.getName(), 0.2, true);
-
-        // this.backgroundTemplateSprite.inputEnabled = true;
-        // this.backgroundTemplateSprite.events.onInputDown.add(() => {
-        //     this.trumpHitSound.play(Phaser.ArrayUtils.getRandomItem(this.sfxLaserSounds));
-        // });
+        if (Config.musicOn) {
+            this.game.sound.play(Assets.Audio.AudioSoundtrack.getName(), 0.2, true);
+        }
 
         this.game.camera.flash(0x000000, 1000);
     }
@@ -104,38 +104,46 @@ export default class Title extends Phaser.State {
         if (this.gamestage) {
             this.gamestage.update();
         }
+
+        // if (this.trumpPaddel) {
+        //     this.trumpPaddel.rotation = this.game.physics.arcade.angleToPointer(this.trumpPaddel);
+        // }
     }
 
-    // public render() {
-    //     if (this.gamestage) {
-    //         this.gamestage.render();
-    //     }
-    // }
+    public render() {
+        if (this.gamestage) {
+            this.gamestage.render();
+        }
+    }
 
     // ----------------
     // Internal Methods
     // ----------------
 
     private createGamestage(): void {
-        this.gamestage = new Gamestage(this.game, this.speedToPoints);
-        this.gamestage.hitSignal.add((position: StagePosition) => {
-            this.doTrumpHit(position);
+        this.gamestage = new Gamestage(this.game, this.speedToPoints, Config.hitBoxHeight);
+        this.gamestage.hitSignal.add(() => {
+            this.doTrumpHit();
+        });
+        this.gamestage.endSignal.add(() => {
+            if (this.gameStarted) {
+                this.stopGame();
+            }
+        });
+        this.gamestage.powerUpSignal.add(() => {
+            this.activateShield();
         });
         this.gamestage.scoreHitSignal.add((speed: GameSpeed) => {
             this.scoreHit(speed);
         });
-        this.gamestage.fishMissedSignal.add(() => {
-            this.missedFish();
+        this.gamestage.fishMissedSignal.add((speed: GameSpeed) => {
+            this.missedFish(speed);
         });
         this.gamestage.visible = false;
     }
 
     private createWaterBackgroundGroup(): void {
         this.waterBackgroundGroup = this.game.add.group();
-    }
-
-    private createOceanGroup(): void {
-        this.oceanGroup = new Oceanlife(this.game);
     }
 
     private createWaterFrontGroup(): void {
@@ -173,15 +181,6 @@ export default class Title extends Phaser.State {
         this.scoreText.visible = true;
     }
 
-    private createTimeText() {
-        if (!this.timerText) {
-            this.timerText = this.game.add.bitmapText(this.game.world.width - 20, 20, "fnt_va", "99:99", 35);
-            this.timerText.anchor.setTo(1, 0);
-        }
-
-        this.timerText.visible = true;
-    }
-
     private createHighscoreText() {
         if (!this.highscoreText) {
             this.highscoreText = this.game.add.bitmapText(this.game.world.centerX, this.game.world.centerY, "fnt_va", "HIGHSCORE: " + this.app.saveService.highscore, 60);
@@ -214,18 +213,32 @@ export default class Title extends Phaser.State {
         this.trumpHitSound = this.game.add.audio(Assets.Audio.AudioPaddel.getName());
         this.fishMissSound = this.game.add.audio(Assets.Audio.AudioRatzFail.getName());
 
-        this.trump = this.game.add.sprite(this.game.world.centerX, 400, Assets.Spritesheets.SpritesheetsPruegelTrump3805091.getName());
+        this.trump = this.game.add.sprite(this.game.world.centerX, 350, Assets.Spritesheets.SpritesheetsSpriteTrump3806061.getName());
+        this.game.physics.arcade.enable(this.trump);
+        this.trump.body.enable = true;
         this.trump.anchor.set(0.5);
-        this.trump.animations.add("hitCenter", [3, 1, 3], 10);
-        this.trump.animations.add("hitLeft", [3, 0, 3], 10);
-        this.trump.animations.add("hitRight", [3, 2, 3], 10);
-        this.trump.frame = 3;
+        // this.trump.animations.add("hitCenter", [1, 0, 1], 30);
+        this.trump.animations.add("sink", [3, 4, 5], 5, true);
+        this.trump.frame = TRUMP_START_FRAME;
+
+        this.trumpPaddel = this.game.add.sprite(this.game.world.centerX + 2, 323, Assets.Images.ImagesPaddel.getName());
+        this.trumpPaddel.anchor.set(0.05);
+        this.trumpPaddel.visible = false;
+
+    }
+
+    private createTrumpShield(): void {
+
+        this.trumpShield = this.game.add.sprite(this.game.world.centerX, 350, Assets.Spritesheets.SpritesheetsSpriteTrump3806061.getName());
+        this.trumpShield.anchor.set(0.5);
+        this.trumpShield.frame = 2;
+        this.trumpShield.visible = false;
     }
 
 
     private startCountdown(): void {
-        if (this.finishText) {
-            this.finishText.visible = false;
+        if (this.title) {
+            this.title.visible = false;
         }
         if (this.newHighscoreText) {
             this.newHighscoreText.visible = false;
@@ -233,12 +246,14 @@ export default class Title extends Phaser.State {
         if (this.achievedScoreText) {
             this.achievedScoreText.visible = false;
         }
+
+        this.trump.reset(this.game.world.centerX, 350);
+
+        this.trump.frame = TRUMP_START_FRAME;
         this.highscoreText.visible = false;
         this.countdown.visible = true;
 
         this.timeLeft = Config.gameTime;
-        //
-        // this.timerText.visible = true;
         this.uiElements.visible = false;
         // this.buttonStart.visible = false;
         // this.buttonRestart.visible = false;
@@ -258,9 +273,8 @@ export default class Title extends Phaser.State {
     private startGame(): void {
         this.title.visible = false;
 
-        if (this.finishText) {
-            this.finishText.visible = false;
-        }
+        this.increaseScores = [...Config.increaseThresholds];
+        this.nextIncrease = this.increaseScores.shift();
 
         this.highscoreText.visible = false;
 
@@ -270,35 +284,23 @@ export default class Title extends Phaser.State {
         this.waterFrontGroup.position.y = 0;
 
         this.createScoreText();
-        this.createTimeText();
         this.createWaterBackground();
-        this.oceanGroup.fill();
         this.createWaterFront();
         this.gamestage.visible = true;
 
         this.score = 0;
         this.totalMisses = 0;
         this.gameStarted = true;
-        this.gamestage.start(Config.gameTime);
-
-        this.timer = this.game.time.create(false);
-        this.timer.loop(Phaser.Timer.SECOND, () => {
-            this.timeLeft--;
-            this.handleTime();
-        }, this);
-
-        this.timer.start();
-    }
-
-    private handleTime(): void {
-        if (this.timeLeft <= 0) {
-            this.stopGame();
-        }
+        this.gamestage.start(Config.fishesToSpawn);
     }
 
     private stopGame(): void {
         this.timeLeft = 0;
-        this.createFinishText();
+
+        if (this.totalMisses < Config.maxMisses) {
+            this.title.text = "The island was saved :-(";
+            this.title.visible = true;
+        }
 
         this.highscoreText.text = String(this.score);
         this.highscoreText.visible = true;
@@ -318,20 +320,8 @@ export default class Title extends Phaser.State {
         this.buttonRestart.visible = true;
 
         this.gameStarted = false;
-
-        this.timer.stop(true);
-        this.timer.destroy();
-        this.timer = null;
     }
 
-    private createFinishText(): void {
-        if (!this.finishText) {
-            this.finishText = this.game.add.bitmapText(this.game.world.centerX, 10, "fnt_va", "ENDE", 148);
-            this.finishText.anchor.setTo(0.5, 0);
-        }
-
-        this.finishText.visible = true;
-    }
 
     private createNewHighScoreText(): void {
         if (!this.newHighscoreText) {
@@ -352,11 +342,10 @@ export default class Title extends Phaser.State {
     }
 
     private cleanUp(): void {
-        this.timerText.visible = false;
         this.scoreText.visible = false;
         this.waterBackgroundGroup.visible = false;
         this.waterFrontGroup.visible = false;
-        this.oceanGroup.clear();
+        this.trumpShield.visible = false;
 
         this.gamestage.stop();
         this.gamestage.visible = false;
@@ -375,7 +364,7 @@ export default class Title extends Phaser.State {
         this.waterBackgroundGroup.removeAll();
         this.waterBackgroundGroup.visible = true;
 
-        let waterBackground = this.game.add.sprite(this.game.world.centerX, this.game.world.height - 150, Assets.Spritesheets.SpritesheetsWasserNogap75015001.getName(), null, this.waterBackgroundGroup);
+        let waterBackground = this.game.add.sprite(this.game.world.centerX, this.game.world.height - 180, Assets.Spritesheets.SpritesheetsWasserNogap75015001.getName(), null, this.waterBackgroundGroup);
         waterBackground.anchor.setTo(0.5);
         waterBackground.animations.add('waves');
         waterBackground.animations.play('waves', 3, true);
@@ -385,34 +374,25 @@ export default class Title extends Phaser.State {
         this.waterFrontGroup.removeAll();
         this.waterFrontGroup.visible = true;
 
-        let waterBackground = this.game.add.sprite(this.game.world.centerX, this.game.world.height - 130, Assets.Spritesheets.SpritesheetsWasserTransparentNogap75015001.getName(), null, this.waterFrontGroup);
+        let waterBackground = this.game.add.sprite(this.game.world.centerX, this.game.world.height - 160, Assets.Spritesheets.SpritesheetsWasserTransparentNogap75015001.getName(), null, this.waterFrontGroup);
         waterBackground.anchor.setTo(0.5);
         waterBackground.frame = 2;
         waterBackground.animations.add('waves', [1, 0, 2]);
         waterBackground.animations.play('waves', 3, true);
     }
 
-    private doTrumpHit(position: StagePosition) {
+    private doTrumpHit() {
         if (this.trump && this.gameStarted) {
-            let hitAni: string;
+            this.trumpPaddel.visible = true;
+            this.trumpPaddel.rotation = this.game.physics.arcade.angleToPointer(this.trumpPaddel);
+            this.trump.frame = TRUMP_HIT_FRAME;
 
-            switch (position) {
-                case StagePosition.LEFT: {
-                    hitAni = "hitLeft";
-                    break;
-                }
-                case StagePosition.CENTER: {
-                    hitAni = "hitCenter";
-                    break;
-                }
-                case StagePosition.RIGHT: {
-                    hitAni = "hitRight";
-                    break;
-                }
-
-            }
-
-            this.trump.animations.play(hitAni);
+            let timer: Phaser.Timer = this.game.time.create(true);
+            timer.add(Phaser.Timer.SECOND / 4, () => {
+                this.trumpPaddel.visible = false;
+                this.trump.frame = TRUMP_START_FRAME;
+            });
+            timer.start();
             this.trumpHitSound.play();
         }
     }
@@ -422,7 +402,13 @@ export default class Title extends Phaser.State {
     }
 
     private scoreHit(speed: GameSpeed): void {
-        this.score += this.speedToPoints.get(speed) * Config.scoreGain;
+        this.score += this.speedToPoints.get(speed);
+        this.doTrumpHit();
+
+        if (this.score > this.nextIncrease) {
+            this.nextIncrease = this.increaseScores.shift();
+            this.gamestage.increaseSpeed();
+        }
     }
 
     private updateScore() {
@@ -431,18 +417,84 @@ export default class Title extends Phaser.State {
         }
     }
 
-    private missedFish() {
-        this.totalMisses++;
-        this.fishMissSound.play();
-        this.raiseWater();
+    private missedFish(speed: GameSpeed) {
+        if (this.shieldHitCount === Config.shieldHitpoints) {
+            this.shieldActive = false;
+            this.trumpShield.visible = false;
+        }
 
-        if (this.totalMisses === Config.maxMisses) {
-            this.stopGame();
+        if (!this.shieldActive) {
+            this.totalMisses++;
+
+            if (this.score > 0) {
+                let penalty = Config.missPenalty * Config.scoreGain;
+                this.score -= penalty;
+                this.showScoreText("-" + penalty);
+            }
+            this.fishMissSound.play();
+            this.raiseWater();
+
+            if (this.totalMisses === Config.maxMisses) {
+                this.sinkTrump();
+            }
+        }
+        else {
+            this.shieldHitCount++;
         }
     }
 
+    private showScoreText(text: string) {
+
+        // change w and h
+        let textPosX = this.game.world.centerX;
+        let textPosY = this.trump.y - 200;
+
+        let txt = this.game.add.bitmapText(textPosX, textPosY, Assets.BitmapFonts.FontsFntVa.getName(), text, 40);
+        txt.anchor.setTo(0.5, 1);
+        let fallTween = this.game.add.tween(txt);
+        fallTween.to({alpha: 0, y: textPosY - 100});
+        fallTween.onComplete.add(() => {
+            txt.destroy();
+        });
+
+        fallTween.start();
+    }
+
     private raiseWater() {
-        this.waterBackgroundGroup.position.y -= this.WATER_MISS_RAISE;
-        this.waterFrontGroup.position.y -= this.WATER_MISS_RAISE;
+        this.waterBackgroundGroup.position.y -= WATER_MISS_RAISE;
+        this.waterFrontGroup.position.y -= WATER_MISS_RAISE;
+    }
+
+    private sinkTrump() {
+
+        this.gameStarted = false;
+
+        this.gamestage.stop();
+        this.scoreText.visible = false;
+        this.createSunkenText();
+
+        this.trump.animations.play("sink");
+        this.trump.body.gravity.y = 100;
+        this.trump.checkWorldBounds = true;
+
+        this.trump.events.onOutOfBounds.addOnce(() => {
+            this.trump.animations.stop();
+            this.stopGame();
+            this.trump.checkWorldBounds = false;
+            this.trump.body.gravity.y = 0;
+        }, this);
+    }
+
+    private createSunkenText() {
+        this.title.text = "An island sunken in the water!";
+        this.title.visible = true;
+    }
+
+    private activateShield() {
+        if (this.gameStarted) {
+            this.trumpShield.visible = true;
+            this.shieldActive = true;
+            this.shieldHitCount = 0;
+        }
     }
 }

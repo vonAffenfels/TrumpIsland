@@ -50,6 +50,16 @@ export namespace Images {
             return require('assets/images/loading.png');
         }
     }
+
+    export class ImagesPaddel {
+        static getName(): string {
+            return 'paddel';
+        }
+
+        static getPNG(): string {
+            return require('assets/images/paddel.png');
+        }
+    }
 }
 
 export namespace Spritesheets {
@@ -188,6 +198,36 @@ export namespace Spritesheets {
 
         static getFrameHeight(): number {
             return 509;
+        }
+
+        static getFrameMax(): number {
+            return -1;
+        }
+
+        static getMargin(): number {
+            return 0;
+        }
+
+        static getSpacing(): number {
+            return 0;
+        }
+    }
+
+    export class SpritesheetsSpriteTrump3806061 {
+        static getName(): string {
+            return 'sprite_trump.[380,606,-1,0,0]';
+        }
+
+        static getPNG(): string {
+            return require('assets/spritesheets/sprite_trump.[380,606,-1,0,0].png');
+        }
+
+        static getFrameWidth(): number {
+            return 380;
+        }
+
+        static getFrameHeight(): number {
+            return 606;
         }
 
         static getFrameMax(): number {

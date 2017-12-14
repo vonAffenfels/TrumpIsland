@@ -1,13 +1,14 @@
 {
-    "name": "phaser-npm-webpack-typescript-starter-project",
-    "productName": "phaser-npm-webpack-typescript-starter-project",
-    "version": "1.8.1",
+    "name": "TrumpIsland",
+    "productName": "TrumpIsland",
+    "version": "1.0.3",
     "main": "electron-main.js",
     "scripts": {
         "webpack:dev": "webpack --config webpack.dev.config.js --progress --colors",
         "webpack:dist": "webpack --config webpack.dist.config.js --progress --colors",
         "build:dev": "echo-cli 'Building DEV ...' && npm run webpack:dev && echo-cli 'Build Complete ✔'",
         "build:dist": "echo-cli 'Building DIST ...' && npm run webpack:dist && echo-cli 'Build Complete ✔' && echo-cli 'Publishing to gh-pages' && gh-pages -d dist",
+        "start": "webpack-dev-server --config webpack.dev.config.js --open",
         "server:dev": "webpack-dev-server --config webpack.dev.config.js --open",
         "server:dist": "webpack-dev-server --config webpack.dist.config.js --open",
         "setupGameSize": "node ./scripts/setupGameSize.js",
@@ -23,13 +24,13 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/rroylance/phaser-npm-webpack-typescript-starter-project.git"
+        "url": "git+https://github.com/vonAffenfels/TrumpIsland.git"
     },
-    "author": "Richard Roylance <https://github.com/rroylance>",
+    "author": "Jan Strohhecker",
     "bugs": {
-        "url": "https://github.com/rroylance/phaser-npm-webpack-typescript-starter-project/issues"
+        "url": "https://github.com/vonAffenfels/TrumpIsland.git/issues"
     },
-    "homepage": "https://github.com/rroylance/phaser-npm-webpack-typescript-starter-project#readme",
+    "homepage": "https://github.com/vonAffenfels/TrumpIsland.git#readme",
     "devDependencies": {
         "@types/node": "8.0.47",
         "@types/webfontloader": "1.6.29",
